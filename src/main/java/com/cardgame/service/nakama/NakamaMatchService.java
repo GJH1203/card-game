@@ -401,15 +401,32 @@ public class NakamaMatchService {
         // Only remove matches that are at least 5 seconds old to prevent race conditions
         Instant cutoffTime = Instant.now().minusSeconds(5);
         
-        // Find and remove matches where player is creator
+        // Find all games where this player is involved
+        List<GameModel> playerGames = gameRepository.findByPlayerIdsContaining(playerId);
+        
+        // Remove match metadata for completed games or old matches
         matchMetadata.entrySet().removeIf(entry -> {
             MatchMetadata meta = entry.getValue();
-            boolean shouldRemove = meta.creatorId != null && 
+            String matchId = entry.getKey();
+            
+            // Check if this match has a completed game
+            boolean hasCompletedGame = playerGames.stream()
+                .anyMatch(game -> game.getNakamaMatchId() != null && 
+                         game.getNakamaMatchId().contains(matchId) && 
+                         game.getGameState() == GameState.COMPLETED);
+            
+            // Remove if:
+            // 1. Match has a completed game, OR
+            // 2. Player is creator and match is old enough
+            boolean shouldRemove = hasCompletedGame || 
+                                  (meta.creatorId != null && 
                                    meta.creatorId.equals(playerId) &&
                                    meta.createdAt != null &&
-                                   meta.createdAt.isBefore(cutoffTime);
+                                   meta.createdAt.isBefore(cutoffTime));
+                                   
             if (shouldRemove) {
-                logger.info("Removing match {} created by {} at {}", entry.getKey(), playerId, meta.createdAt);
+                logger.info("Removing match {} for player {} (completed: {})", 
+                    matchId, playerId, hasCompletedGame);
             }
             return shouldRemove;
         });
@@ -452,8 +469,17 @@ public class NakamaMatchService {
                 );
             
             if (activeGame.isPresent()) {
-                logger.info("Found active game {} for player {}", activeGame.get().getId(), playerId);
-                return activeGame.get();
+                GameModel game = activeGame.get();
+                logger.info("Found active game {} in state {} for player {}", 
+                    game.getId(), game.getGameState(), playerId);
+                
+                // Additional validation - ensure the game is truly active
+                if (game.getGameState() == GameState.COMPLETED) {
+                    logger.error("ERROR: Repository returned COMPLETED game as active! Game: {}", game.getId());
+                    return null;
+                }
+                
+                return game;
             } else {
                 logger.info("No active games found for player {}", playerId);
                 return null;

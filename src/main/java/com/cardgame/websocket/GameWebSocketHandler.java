@@ -387,6 +387,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 String gameId = gameDto.getId();
                 var gameModel = gameService.getGameModel(gameId);
                 
+                // Check if game is completed and clean up if needed
+                if ("COMPLETED".equals(gameDto.getState())) {
+                    logger.info("Game {} is completed, cleaning up match {}", gameId, matchId);
+                    // Clean up match metadata for all players in the game
+                    if (gameModel != null && gameModel.getPlayerIds() != null) {
+                        for (String playerId : gameModel.getPlayerIds()) {
+                            nakamaMatchService.clearPlayerMatches(playerId);
+                        }
+                    }
+                }
+                
                 // Send player-specific views to each session
                 for (WebSocketSession session : sessions) {
                     SessionInfo sInfo = sessionInfoMap.get(session.getId());
