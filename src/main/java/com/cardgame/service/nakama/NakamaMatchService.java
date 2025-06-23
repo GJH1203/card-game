@@ -450,7 +450,7 @@ public class NakamaMatchService {
     }
     
     /**
-     * Find an active (non-completed) game for a player
+     * Find an active (non-completed) ONLINE game for a player
      * @param playerId The player ID to search for
      * @return The active GameModel or null if none found
      */
@@ -462,15 +462,15 @@ public class NakamaMatchService {
                 GameState.IN_PROGRESS
             );
             
-            // Use efficient repository query to find the most recent active game
+            // Use efficient repository query to find the most recent active ONLINE game
             Optional<GameModel> activeGame = gameRepository
-                .findFirstByPlayerIdsContainingAndGameStateInOrderByUpdatedAtDesc(
-                    playerId, activeStates
+                .findFirstByPlayerIdsContainingAndGameStateInAndGameModeOrderByUpdatedAtDesc(
+                    playerId, activeStates, GameMode.ONLINE
                 );
             
             if (activeGame.isPresent()) {
                 GameModel game = activeGame.get();
-                logger.info("Found active game {} in state {} for player {}", 
+                logger.info("Found active ONLINE game {} in state {} for player {}", 
                     game.getId(), game.getGameState(), playerId);
                 
                 // Additional validation - ensure the game is truly active
@@ -481,7 +481,7 @@ public class NakamaMatchService {
                 
                 return game;
             } else {
-                logger.info("No active games found for player {}", playerId);
+                logger.info("No active ONLINE games found for player {}", playerId);
                 return null;
             }
         } catch (IllegalArgumentException e) {
@@ -508,6 +508,35 @@ public class NakamaMatchService {
      */
     private void clearPlayerFromActiveMatches(String playerId) {
         logger.info("Clearing player {} from any active matches", playerId);
+        
+        // First, mark any IN_PROGRESS games as completed (abandoned)
+        GameModel activeGame = findActiveGameForPlayer(playerId);
+        if (activeGame != null && activeGame.getGameState() == GameState.IN_PROGRESS) {
+            logger.info("Marking active game {} as abandoned for player {}", activeGame.getId(), playerId);
+            activeGame.setGameState(GameState.COMPLETED);
+            activeGame.setUpdatedAt(Instant.now());
+            // Set winner as the other player (if any)
+            String opponentId = activeGame.getPlayerIds().stream()
+                .filter(id -> !id.equals(playerId))
+                .findFirst()
+                .orElse(null);
+            if (opponentId != null) {
+                activeGame.setWinnerId(opponentId);
+                logger.info("Set winner as opponent {} due to abandonment", opponentId);
+            }
+            gameRepository.save(activeGame);
+            
+            // Notify other player about game completion through match broadcast
+            if (gameWebSocketHandler != null && activeGame.getNakamaMatchId() != null) {
+                Map<String, Object> notification = new HashMap<>();
+                notification.put("type", "GAME_ABANDONED");
+                notification.put("gameId", activeGame.getId());
+                notification.put("gameState", "COMPLETED");
+                notification.put("winnerId", opponentId);
+                notification.put("message", "Opponent has left the game");
+                gameWebSocketHandler.broadcastGameUpdate(activeGame.getNakamaMatchId(), notification);
+            }
+        }
         
         // Find and remove matches where player is creator and still waiting
         List<String> matchesToRemove = new ArrayList<>();

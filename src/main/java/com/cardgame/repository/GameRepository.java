@@ -1,6 +1,7 @@
 package com.cardgame.repository;
 
 import com.cardgame.model.GameModel;
+import com.cardgame.model.GameMode;
 import com.cardgame.model.GameState;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,14 @@ public interface GameRepository extends MongoRepository<GameModel, String> {
      * @return List of all games containing this player
      */
     List<GameModel> findByPlayerIdsContaining(String playerId);
+    
+    /**
+     * Find the most recent active ONLINE game for a player
+     * @param playerId The player ID to search for
+     * @param states List of game states considered "active"
+     * @param gameMode The game mode to filter by
+     * @return The most recent active online game or empty
+     */
+    Optional<GameModel> findFirstByPlayerIdsContainingAndGameStateInAndGameModeOrderByUpdatedAtDesc(
+        String playerId, List<GameState> states, GameMode gameMode);
 }
