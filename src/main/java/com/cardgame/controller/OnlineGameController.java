@@ -300,10 +300,11 @@ public class OnlineGameController {
         Map<String, Object> response = new HashMap<>();
         try {
             // Find all games in INITIALIZED or IN_PROGRESS state
-            List<GameModel> activeGames = gameRepository.findAll().stream()
-                .filter(game -> game.getGameState() == GameState.INITIALIZED || 
-                               game.getGameState() == GameState.IN_PROGRESS)
-                .collect(java.util.stream.Collectors.toList());
+            List<GameState> activeStates = Arrays.asList(
+                GameState.INITIALIZED,
+                GameState.IN_PROGRESS
+            );
+            List<GameModel> activeGames = gameRepository.findByGameStateIn(activeStates);
             
             Instant thirtyMinutesAgo = Instant.now().minus(30, ChronoUnit.MINUTES);
             int cleanedCount = 0;

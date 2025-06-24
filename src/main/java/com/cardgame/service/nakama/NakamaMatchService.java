@@ -412,7 +412,7 @@ public class NakamaMatchService {
             // Check if this match has a completed game
             boolean hasCompletedGame = playerGames.stream()
                 .anyMatch(game -> game.getNakamaMatchId() != null && 
-                         game.getNakamaMatchId().contains(matchId) && 
+                         game.getNakamaMatchId().equals(matchId) && 
                          game.getGameState() == GameState.COMPLETED);
             
             // Remove if:

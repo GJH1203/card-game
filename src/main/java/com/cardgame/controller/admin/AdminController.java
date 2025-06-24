@@ -1,5 +1,7 @@
 package com.cardgame.controller.admin;
 
+import com.cardgame.model.GameModel;
+import com.cardgame.model.GameState;
 import com.cardgame.repository.PlayerRepository;
 import com.cardgame.repository.DeckRepository;
 import com.cardgame.repository.GameRepository;
@@ -13,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -183,9 +186,8 @@ public class AdminController {
             }
             
             // Delete player's games (where they are a participant)
-            gameRepository.findAll().stream()
-                .filter(game -> game.getPlayerIds().contains(playerId))
-                .forEach(game -> gameRepository.delete(game));
+            List<GameModel> playerGames = gameRepository.findByPlayerIdsContaining(playerId);
+            gameRepository.deleteAll(playerGames);
             
             // Delete player's decks
             deckRepository.findByOwnerId(playerId)
@@ -303,9 +305,7 @@ public class AdminController {
         
         try {
             // Find and count in-progress games
-            var inProgressGames = gameRepository.findAll().stream()
-                .filter(game -> "IN_PROGRESS".equals(game.getGameState().toString()))
-                .toList();
+            var inProgressGames = gameRepository.findByGameState(GameState.IN_PROGRESS);
             
             int gameCount = inProgressGames.size();
             
@@ -338,9 +338,7 @@ public class AdminController {
             nakamaMatchService.clearAllMatches();
             
             // 2. Clear all in-progress games from database
-            var inProgressGames = gameRepository.findAll().stream()
-                .filter(game -> "IN_PROGRESS".equals(game.getGameState().toString()))
-                .toList();
+            var inProgressGames = gameRepository.findByGameState(GameState.IN_PROGRESS);
             int gameCount = inProgressGames.size();
             gameRepository.deleteAll(inProgressGames);
             

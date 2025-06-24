@@ -50,4 +50,11 @@ public interface GameRepository extends MongoRepository<GameModel, String> {
      * @return List of games matching the given states
      */
     List<GameModel> findByGameStateIn(List<GameState> states);
+    
+    /**
+     * Find all games by a single game state
+     * @param state The game state to search for
+     * @return List of games matching the given state
+     */
+    List<GameModel> findByGameState(GameState state);
 }
