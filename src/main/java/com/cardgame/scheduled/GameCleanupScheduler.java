@@ -39,9 +39,7 @@ public class GameCleanupScheduler {
                 GameState.IN_PROGRESS
             );
             
-            List<GameModel> activeGames = gameRepository.findAll().stream()
-                .filter(game -> activeStates.contains(game.getGameState()))
-                .collect(java.util.stream.Collectors.toList());
+            List<GameModel> activeGames = gameRepository.findByGameStateIn(activeStates);
             
             // Games older than 30 minutes without updates are considered abandoned
             Instant thirtyMinutesAgo = Instant.now().minus(30, ChronoUnit.MINUTES);
@@ -95,9 +93,7 @@ public class GameCleanupScheduler {
                 GameState.IN_PROGRESS
             );
             
-            List<GameModel> activeGames = gameRepository.findAll().stream()
-                .filter(game -> activeStates.contains(game.getGameState()))
-                .collect(java.util.stream.Collectors.toList());
+            List<GameModel> activeGames = gameRepository.findByGameStateIn(activeStates);
             
             // Games older than 2 hours are definitely abandoned
             Instant twoHoursAgo = Instant.now().minus(2, ChronoUnit.HOURS);

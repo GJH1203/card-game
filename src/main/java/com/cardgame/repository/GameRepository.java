@@ -43,4 +43,11 @@ public interface GameRepository extends MongoRepository<GameModel, String> {
      */
     Optional<GameModel> findFirstByPlayerIdsContainingAndGameStateInAndGameModeOrderByUpdatedAtDesc(
         String playerId, List<GameState> states, GameMode gameMode);
+    
+    /**
+     * Find all games with specific states
+     * @param states List of game states to search for
+     * @return List of games matching the given states
+     */
+    List<GameModel> findByGameStateIn(List<GameState> states);
 }
